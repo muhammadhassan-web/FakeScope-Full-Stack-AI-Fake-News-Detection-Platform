@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}Not found — FakeScope{% endblock %}
+{% block content %}
+<section class="page-hero">
+  <div class="shell">
+    <h1>Page not found</h1>
+    <p class="page-lede">That URL doesn’t exist. Head back to the analyzer.</p>
+    <a class="btn btn-primary" href="{{ url_for('pages.index') }}">Go home</a>
+  </div>
+</section>
+{% endblock %}

@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+{% block title %}FakeScope — AI Fake News Detector{% endblock %}
+
+{% block content %}
+<section class="hero" aria-labelledby="hero-brand">
+  <div class="hero-atmosphere" aria-hidden="true">
+    <div class="hero-glow"></div>
+    <svg class="hero-signal" viewBox="0 0 1200 700" preserveAspectRatio="xMidYMid slice" role="img">
+      <defs>
+        <linearGradient id="wave" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" stop-color="#0D7377" stop-opacity="0"/>
+          <stop offset="35%" stop-color="#0D7377" stop-opacity="0.55"/>
+          <stop offset="65%" stop-color="#14919B" stop-opacity="0.35"/>
+          <stop offset="100%" stop-color="#0D7377" stop-opacity="0"/>
+        </linearGradient>
+        <radialGradient id="lens" cx="70%" cy="45%" r="40%">
+          <stop offset="0%" stop-color="#14919B" stop-opacity="0.28"/>
+          <stop offset="100%" stop-color="#14919B" stop-opacity="0"/>
+        </radialGradient>
+      </defs>
+      <rect width="1200" height="700" fill="url(#lens)"/>
+      <g fill="none" stroke="url(#wave)" stroke-width="1.5">
+        <path class="wave-line" d="M0,360 C150,280 300,440 450,360 S750,280 900,360 1050,440 1200,360"/>
+        <path class="wave-line wave-2" d="M0,400 C180,320 320,480 500,400 S820,320 980,400 1100,460 1200,400"/>
+        <path class="wave-line wave-3" d="M0,320 C200,240 340,400 520,320 S840,240 1000,320 1120,380 1200,320"/>
+      </g>
+      <circle class="lens-ring" cx="840" cy="310" r="92" fill="none" stroke="#0C1B2A" stroke-opacity="0.12" stroke-width="1"/>
+      <circle class="lens-ring lens-ring-2" cx="840" cy="310" r="128" fill="none" stroke="#0D7377" stroke-opacity="0.2" stroke-width="1"/>
+      <circle cx="840" cy="310" r="6" fill="#0D7377"/>
+    </svg>
+  </div>
+
+  <div class="shell hero-copy">
+    <p class="hero-brand" id="hero-brand">FakeScope</p>
+    <h1 class="hero-title">See through the noise.</h1>
+    <p class="hero-lede">Paste a headline or article excerpt. Get an authenticity signal with confidence scores in seconds.</p>
+    <div class="hero-actions">
+      <a class="btn btn-primary" href="#analyze">Analyze text</a>
+      <a class="btn btn-ghost" href="{{ url_for('pages.about') }}">How it works</a>
+    </div>
+  </div>
+</section>
+
+<section class="analyze-section" id="analyze" aria-labelledby="analyze-heading"
+         data-min-length="{{ min_length }}" data-max-length="{{ max_length }}">
+  <div class="shell">
+    <header class="section-head">
+      <h2 id="analyze-heading">Analyze</h2>
+      <p>Enter news text. Results are model estimates — always cross-check important claims.</p>
+    </header>
+
+    <div class="analyzer" role="form" aria-describedby="analyze-hint">
+      <label class="field-label" for="newsInput">News text</label>
+      <textarea id="newsInput" name="text" rows="7"
+        placeholder="Paste a headline or short article excerpt…"
+        maxlength="{{ max_length }}"
+        aria-describedby="analyze-hint charCount"></textarea>
+      <p id="analyze-hint" class="field-hint">{{ min_length }}–{{ max_length|int }} characters · Ctrl/⌘ + Enter to run</p>
+
+      <div class="analyzer-toolbar">
+        <button type="button" class="btn btn-primary" id="analyzeBtn">
+          <span class="btn-label">Run analysis</span>
+          <span class="btn-spinner" hidden aria-hidden="true"></span>
+        </button>
+        <button type="button" class="btn btn-ghost" id="clearBtn">Clear</button>
+        <span class="char-count" id="charCount" aria-live="polite">0 / {{ max_length }}</span>
+      </div>
+
+      <div class="examples" aria-label="Example texts">
+        <p class="examples-label">Try an example</p>
+        <div class="example-list">
+          {% for ex in examples %}
+          <button type="button" class="example example-{{ ex.label }}"
+                  data-example="{{ ex.text|e }}"
+                  title="{{ ex.title }}">{{ ex.title }}</button>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <div id="result" class="result" hidden aria-live="polite">
+      <div class="result-panel" id="resultPanel">
+        <div class="result-verdict">
+          <p class="result-kicker" id="resultKicker">Verdict</p>
+          <h3 class="result-label" id="resultLabel">—</h3>
+          <p class="result-explanation" id="resultExplanation"></p>
+        </div>
+        <div class="result-scores">
+          <div class="score">
+            <span class="score-label">Confidence</span>
+            <span class="score-value" id="confValue">—</span>
+          </div>
+          <div class="score">
+            <span class="score-label">Fake</span>
+            <span class="score-value score-fake" id="fakeValue">—</span>
+          </div>
+          <div class="score">
+            <span class="score-label">Real</span>
+            <span class="score-value score-real" id="realValue">—</span>
+          </div>
+        </div>
+        <div class="prob">
+          <div class="prob-track" role="img" aria-label="Probability distribution">
+            <div class="prob-fake" id="fakeBar" style="width:50%"></div>
+            <div class="prob-real" id="realBar" style="width:50%"></div>
+          </div>
+          <div class="prob-legend">
+            <span>Fake <strong id="fakePct">50%</strong></span>
+            <span>Real <strong id="realPct">50%</strong></span>
+          </div>
+        </div>
+        <p class="result-meta" id="resultMeta"></p>
+      </div>
+      <p class="form-error" id="formError" hidden role="alert"></p>
+    </div>
+  </div>
+</section>
+
+{% if metrics %}
+<section class="metrics-section" aria-labelledby="metrics-heading">
+  <div class="shell">
+    <header class="section-head">
+      <h2 id="metrics-heading">Model accuracy</h2>
+      <p>Held-out test performance for the classifiers behind FakeScope. Active model: <strong>{{ model_name }}</strong>.</p>
+    </header>
+    <div class="metrics-row">
+      {% for name, m in metrics.items() %}
+      <div class="metric">
+        <p class="metric-value">{{ "%.1f"|format(m.acc * 100) }}%</p>
+        <p class="metric-name">{{ name }}</p>
+        <p class="metric-sub">F1 {{ "%.2f"|format(m.f1) }}</p>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endif %}
+{% endblock %}

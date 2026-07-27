@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="FakeScope — professional AI fake news detection. Analyze headlines and articles with confidence scores powered by machine learning.">
+  <meta name="theme-color" content="#0C1B2A">
+  <title>{% block title %}FakeScope{% endblock %}</title>
+  <link rel="icon" href="{{ url_for('static', filename='img/favicon.svg') }}" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,500;9..144,700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+  {% block head %}{% endblock %}
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <header class="site-header">
+    <div class="shell header-inner">
+      <a class="brand" href="{{ url_for('pages.index') }}" aria-label="FakeScope home">
+        <span class="brand-mark" aria-hidden="true"></span>
+        <span class="brand-name">FakeScope</span>
+      </a>
+      <nav class="site-nav" aria-label="Primary">
+        <a href="{{ url_for('pages.index') }}#analyze" class="{% if request.endpoint == 'pages.index' %}is-active{% endif %}">Analyze</a>
+        <a href="{{ url_for('pages.about') }}" class="{% if request.endpoint == 'pages.about' %}is-active{% endif %}">How it works</a>
+        <a href="{{ url_for('pages.docs') }}" class="{% if request.endpoint == 'pages.docs' %}is-active{% endif %}">API</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main">
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="site-footer">
+    <div class="shell footer-inner">
+      <p><strong>FakeScope</strong> — ML-powered authenticity signals for news text.</p>
+      <p class="footer-meta">Not a substitute for professional fact-checking. Verify critical claims with primary sources.</p>
+    </div>
+  </footer>
+
+  <script src="{{ url_for('static', filename='js/app.js') }}" defer></script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

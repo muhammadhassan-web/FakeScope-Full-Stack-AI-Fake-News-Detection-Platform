@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}API — FakeScope{% endblock %}
+
+{% block content %}
+<section class="page-hero">
+  <div class="shell">
+    <p class="eyebrow">Developers</p>
+    <h1>HTTP API</h1>
+    <p class="page-lede">JSON endpoints for health checks and predictions. Rate-limited for fair use.</p>
+  </div>
+</section>
+
+<section class="content-section">
+  <div class="shell docs">
+    <article class="doc-block">
+      <h2><span class="method get">GET</span> /health</h2>
+      <p>Liveness and model readiness.</p>
+<pre><code>curl -s http://127.0.0.1:5000/health</code></pre>
+<pre><code>{
+  "status": "ok",
+  "model": "Logistic Regression",
+  "ready": true
+}</code></pre>
+    </article>
+
+    <article class="doc-block">
+      <h2><span class="method post">POST</span> /predict</h2>
+      <p>Score a news string. Body must be JSON with <code>text</code> ({{ min_length }}–{{ max_length }} chars).</p>
+<pre><code>curl -s -X POST http://127.0.0.1:5000/predict \
+  -H "Content-Type: application/json" \
+  -d '{"text":"Federal Reserve raises interest rates amid inflation concerns reported by CPI data."}'</code></pre>
+<pre><code>{
+  "label": "REAL",
+  "confidence": 94.2,
+  "fake_prob": 5.8,
+  "real_prob": 94.2,
+  "cleaned_tokens": 12,
+  "model": "Logistic Regression",
+  "verdict": "Likely authentic",
+  "explanation": "…"
+}</code></pre>
+    </article>
+
+    <article class="doc-block">
+      <h2><span class="method get">GET</span> /metrics</h2>
+      <p>Training metrics for all compared models.</p>
+<pre><code>curl -s http://127.0.0.1:5000/metrics</code></pre>
+    </article>
+
+    <article class="doc-block">
+      <h2>Errors</h2>
+      <ul>
+        <li><code>400</code> — validation / invalid JSON</li>
+        <li><code>422</code> — text unusable after cleaning</li>
+        <li><code>429</code> — rate limit exceeded</li>
+        <li><code>503</code> — model not loaded</li>
+      </ul>
+    </article>
+  </div>
+</section>
+{% endblock %}
