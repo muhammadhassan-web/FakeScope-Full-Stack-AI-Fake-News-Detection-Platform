@@ -18,4 +18,6 @@ jobs:
       - name: Train models
         run: python train.py
       - name: Run tests
-        run: pytest -q
+        env:
+          PYTHONPATH: .
+        run: python -m pytest -q
