@@ -179,6 +179,12 @@
       a.rel = "noopener noreferrer";
       a.textContent = `[${s.index}] ${s.title}`;
       li.appendChild(a);
+      if (s.published_date) {
+        const dateSpan = document.createElement("span");
+        dateSpan.className = "citation-date";
+        dateSpan.textContent = ` — ${s.published_date}`;
+        li.appendChild(dateSpan);
+      }
       citationList.appendChild(li);
     });
   }

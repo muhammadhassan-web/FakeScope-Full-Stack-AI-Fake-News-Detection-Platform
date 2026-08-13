@@ -535,6 +535,11 @@ textarea:focus {
   color: var(--muted);
 }
 
+.citation-date {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
 .result-kicker {
   margin: 0;
   text-transform: uppercase;

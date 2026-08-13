@@ -25,15 +25,22 @@ MAX_SNIPPET_CHARS = 600
 
 VALID_VERDICTS = {"SUPPORTED", "CONTRADICTED", "UNVERIFIED"}
 
-SYSTEM_PROMPT = """You are a careful fact-checking assistant. You are given a CLAIM and a \
-numbered list of SOURCES retrieved from a live web search just now. Decide whether the \
-CLAIM is supported, contradicted, or cannot be verified — using ONLY the provided sources, \
-never outside knowledge.
+SYSTEM_PROMPT = """You are a careful fact-checking assistant. You are given TODAY'S DATE, a \
+CLAIM, and a numbered list of SOURCES retrieved from a live web search just now. Decide \
+whether the CLAIM is supported, contradicted, or cannot be verified — using ONLY the \
+provided sources, never outside knowledge.
 
 Rules:
+- Each source lists its publish date (or "unknown" if not available). If the claim has a \
+time component (e.g. "today", "this week", "currently"), the source's date must actually \
+match that window relative to TODAY'S DATE — a real event from a different day does NOT \
+support a claim about "today". Sources with an unknown or mismatched date cannot support a \
+time-specific claim; treat that as UNVERIFIED (or note the mismatch if it actively \
+contradicts the claim's timing).
 - If the sources don't clearly address the claim, or conflict with each other, respond UNVERIFIED.
 - Only cite source numbers that were actually given to you.
-- Keep the explanation to 2-3 sentences and reference sources like [1], [2].
+- Keep the explanation to 2-3 sentences, reference sources like [1], [2], and if a date \
+mismatch is why you're not confirming, say so explicitly.
 - Respond with ONLY a JSON object, no other text, matching exactly:
 {"verdict": "SUPPORTED" | "CONTRADICTED" | "UNVERIFIED", "confidence": <integer 0-100>, \
 "explanation": "<string>", "cited_sources": [<integers>]}"""
@@ -53,6 +60,7 @@ class Source:
     title: str
     url: str
     snippet: str
+    published_date: str = ""
     cited: bool = False
 
     def to_dict(self) -> dict[str, Any]:
@@ -61,6 +69,7 @@ class Source:
             "title": self.title,
             "url": self.url,
             "snippet": self.snippet,
+            "published_date": self.published_date,
             "cited": self.cited,
         }
 
@@ -113,14 +122,18 @@ def _search_web(query: str, api_key: str, max_results: int) -> list[dict[str, An
 def _ask_llm(
     claim: str,
     sources: list[Source],
+    today: str,
     api_key: str,
     base_url: str,
     model: str,
 ) -> dict[str, Any]:
     listing = "\n\n".join(
-        f"[{s.index}] {s.title} — {s.url}\n{s.snippet}" for s in sources
+        f"[{s.index}] {s.title} — {s.url}\n"
+        f"Published: {s.published_date or 'unknown'}\n"
+        f"{s.snippet}"
+        for s in sources
     )
-    user_prompt = f"CLAIM: {claim}\n\nSOURCES:\n\n{listing}"
+    user_prompt = f"TODAY'S DATE: {today}\n\nCLAIM: {claim}\n\nSOURCES:\n\n{listing}"
 
     try:
         resp = requests.post(
@@ -168,6 +181,9 @@ def verify_claim(
             "Live fact-checking isn't configured. Set TAVILY_API_KEY and GROQ_API_KEY."
         )
 
+    now = datetime.now(timezone.utc)
+    today_str = now.strftime("%Y-%m-%d (%A)")
+
     raw_results = _search_web(claim, tavily_api_key, max_sources)
 
     if not raw_results:
@@ -177,7 +193,7 @@ def verify_claim(
             confidence=0.0,
             explanation="No current web sources were found for this claim, so it can't be verified right now.",
             sources=[],
-            checked_at=datetime.now(timezone.utc).isoformat(),
+            checked_at=now.isoformat(),
         )
 
     sources = [
@@ -186,11 +202,12 @@ def verify_claim(
             title=(r.get("title") or "Untitled")[:200],
             url=r.get("url", ""),
             snippet=(r.get("content") or "")[:MAX_SNIPPET_CHARS],
+            published_date=(r.get("published_date") or "").strip(),
         )
         for i, r in enumerate(raw_results)
     ]
 
-    verdict_raw = _ask_llm(claim, sources, groq_api_key, groq_base_url, groq_model)
+    verdict_raw = _ask_llm(claim, sources, today_str, groq_api_key, groq_base_url, groq_model)
 
     verdict = str(verdict_raw.get("verdict", "UNVERIFIED")).upper()
     if verdict not in VALID_VERDICTS:
@@ -212,7 +229,7 @@ def verify_claim(
             continue
 
     sources = [
-        Source(s.index, s.title, s.url, s.snippet, cited=s.index in cited_indices)
+        Source(s.index, s.title, s.url, s.snippet, s.published_date, cited=s.index in cited_indices)
         for s in sources
     ]
 
@@ -222,5 +239,5 @@ def verify_claim(
         confidence=round(confidence, 1),
         explanation=explanation,
         sources=sources,
-        checked_at=datetime.now(timezone.utc).isoformat(),
+        checked_at=now.isoformat(),
     )
