@@ -30,9 +30,19 @@ class Config:
 
     RATELIMIT_DEFAULT = os.environ.get("RATELIMIT_DEFAULT", "60 per minute")
     RATELIMIT_PREDICT = os.environ.get("RATELIMIT_PREDICT", "20 per minute")
+    RATELIMIT_VERIFY = os.environ.get("RATELIMIT_VERIFY", "10 per minute")
     RATELIMIT_STORAGE_URI = os.environ.get("RATELIMIT_STORAGE_URI", "memory://")
 
     LOG_LEVEL = os.environ.get("LOG_LEVEL", "INFO")
+
+    # Live fact-checking (web search + LLM reasoning over retrieved sources).
+    # Separate from the offline TF-IDF classifier — unset means the /verify
+    # endpoint responds 503 rather than silently degrading.
+    TAVILY_API_KEY = os.environ.get("TAVILY_API_KEY", "")
+    GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
+    GROQ_BASE_URL = os.environ.get("GROQ_BASE_URL", "https://api.groq.com/openai/v1")
+    GROQ_MODEL = os.environ.get("GROQ_MODEL", "llama-3.3-70b-versatile")
+    FACTCHECK_MAX_SOURCES = int(os.environ.get("FACTCHECK_MAX_SOURCES", 5))
 
 
 class DevelopmentConfig(Config):

@@ -98,3 +98,86 @@ def test_predict_when_model_ready(client, app):
     assert data["label"] in ("FAKE", "REAL")
     assert "confidence" in data
     assert "explanation" in data
+
+
+def test_verify_requires_json(client):
+    res = client.post("/verify", data="not-json", content_type="text/plain")
+    assert res.status_code == 400
+
+
+def test_verify_validates_empty(client):
+    res = client.post("/verify", json={"text": ""})
+    assert res.status_code == 400
+
+
+def test_verify_unavailable_without_keys(client, app):
+    app.config["TAVILY_API_KEY"] = ""
+    app.config["GROQ_API_KEY"] = ""
+    res = client.post(
+        "/verify",
+        json={"text": "The central bank raised interest rates again this week."},
+    )
+    assert res.status_code == 503
+    assert res.get_json()["code"] == "factcheck_unavailable"
+
+
+def test_verify_mocked_search_and_llm(client, app, monkeypatch):
+    import json as jsonlib
+
+    app.config["TAVILY_API_KEY"] = "test-tavily-key"
+    app.config["GROQ_API_KEY"] = "test-groq-key"
+
+    class FakeResponse:
+        def __init__(self, payload):
+            self._payload = payload
+
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return self._payload
+
+    def fake_post(url, **kwargs):
+        if "tavily.com" in url:
+            return FakeResponse(
+                {
+                    "results": [
+                        {
+                            "title": "Central bank raises rates",
+                            "url": "https://example.com/news/rates",
+                            "content": "The central bank raised its benchmark rate by 0.25% this week.",
+                        }
+                    ]
+                }
+            )
+        return FakeResponse(
+            {
+                "choices": [
+                    {
+                        "message": {
+                            "content": jsonlib.dumps(
+                                {
+                                    "verdict": "SUPPORTED",
+                                    "confidence": 88,
+                                    "explanation": "Source [1] confirms the rate hike.",
+                                    "cited_sources": [1],
+                                }
+                            )
+                        }
+                    }
+                ]
+            }
+        )
+
+    monkeypatch.setattr("app.services.factcheck.requests.post", fake_post)
+
+    res = client.post(
+        "/verify",
+        json={"text": "The central bank raised interest rates again this week."},
+    )
+    assert res.status_code == 200
+    data = res.get_json()
+    assert data["verdict"] == "SUPPORTED"
+    assert data["confidence"] == 88
+    assert len(data["sources"]) == 1
+    assert data["sources"][0]["cited"] is True

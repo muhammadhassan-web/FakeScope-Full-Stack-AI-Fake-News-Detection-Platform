@@ -42,6 +42,24 @@
     </article>
 
     <article class="doc-block">
+      <h2><span class="method post">POST</span> /verify</h2>
+      <p>Live fact-check: searches the web for the claim, then an LLM reasons over the retrieved sources and returns a cited verdict. Returns <code>503</code> if <code>TAVILY_API_KEY</code>/<code>GROQ_API_KEY</code> aren't configured on the server.</p>
+<pre><code>curl -s -X POST http://127.0.0.1:5000/verify \
+  -H "Content-Type: application/json" \
+  -d '{"text":"NASA confirmed a new Earth-sized exoplanet this week."}'</code></pre>
+<pre><code>{
+  "claim": "NASA confirmed a new Earth-sized exoplanet this week.",
+  "verdict": "UNVERIFIED",
+  "confidence": 20,
+  "explanation": "…",
+  "sources": [
+    {"index": 1, "title": "…", "url": "…", "snippet": "…", "cited": true}
+  ],
+  "checked_at": "2026-08-13T12:00:00+00:00"
+}</code></pre>
+    </article>
+
+    <article class="doc-block">
       <h2><span class="method get">GET</span> /metrics</h2>
       <p>Training metrics for all compared models.</p>
 <pre><code>curl -s http://127.0.0.1:5000/metrics</code></pre>
@@ -53,7 +71,8 @@
         <li><code>400</code> — validation / invalid JSON</li>
         <li><code>422</code> — text unusable after cleaning</li>
         <li><code>429</code> — rate limit exceeded</li>
-        <li><code>503</code> — model not loaded</li>
+        <li><code>502</code> — live fact-check upstream (search/LLM) call failed</li>
+        <li><code>503</code> — model not loaded, or fact-checking not configured</li>
       </ul>
     </article>
   </div>

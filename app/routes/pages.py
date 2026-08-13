@@ -66,6 +66,8 @@ def index():
         model_name = "Unavailable"
         metrics = {}
 
+    live_factcheck = bool(current_app.config["TAVILY_API_KEY"] and current_app.config["GROQ_API_KEY"])
+
     return render_template(
         "index.html",
         model_name=model_name,
@@ -74,6 +76,7 @@ def index():
         has_charts=_has_charts(),
         min_length=current_app.config["MIN_TEXT_LENGTH"],
         max_length=current_app.config["MAX_TEXT_LENGTH"],
+        live_factcheck=live_factcheck,
     )
 
 

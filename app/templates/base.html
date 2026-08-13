@@ -24,6 +24,7 @@
       </a>
       <nav class="site-nav" aria-label="Primary">
         <a href="{{ url_for('pages.index') }}#analyze" class="{% if request.endpoint == 'pages.index' %}is-active{% endif %}">Analyze</a>
+        <a href="{{ url_for('pages.index') }}#factcheck">Live check</a>
         <a href="{{ url_for('pages.about') }}" class="{% if request.endpoint == 'pages.about' %}is-active{% endif %}">How it works</a>
         <a href="{{ url_for('pages.docs') }}" class="{% if request.endpoint == 'pages.docs' %}is-active{% endif %}">API</a>
       </nav>

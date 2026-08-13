@@ -116,6 +116,51 @@
   </div>
 </section>
 
+<section class="factcheck-section" id="factcheck" aria-labelledby="factcheck-heading"
+         data-min-length="{{ min_length }}" data-max-length="{{ max_length }}"
+         data-live="{{ 'true' if live_factcheck else 'false' }}">
+  <div class="shell">
+    <header class="section-head">
+      <h2 id="factcheck-heading">Live fact-check</h2>
+      <p>
+        Searches the live web right now and reasons over what it finds, with citations — for
+        claims about current events, not writing-style patterns.
+        {% if not live_factcheck %}
+        <span class="factcheck-offline-note">Offline on this deployment — search/reasoning keys aren't configured.</span>
+        {% endif %}
+      </p>
+    </header>
+
+    <div class="analyzer" role="form" aria-describedby="factcheck-hint">
+      <label class="field-label" for="claimInput">Claim or headline</label>
+      <textarea id="claimInput" name="claim" rows="4"
+        placeholder="Paste a specific, checkable claim about a current event…"
+        maxlength="{{ max_length }}"
+        aria-describedby="factcheck-hint" {% if not live_factcheck %}disabled{% endif %}></textarea>
+      <p id="factcheck-hint" class="field-hint">{{ min_length }}–{{ max_length|int }} characters · searches live sources, then reasons with citations</p>
+
+      <div class="analyzer-toolbar">
+        <button type="button" class="btn btn-primary" id="verifyBtn" {% if not live_factcheck %}disabled{% endif %}>
+          <span class="btn-label">Check against live sources</span>
+          <span class="btn-spinner" hidden aria-hidden="true"></span>
+        </button>
+      </div>
+    </div>
+
+    <div id="factcheckResult" class="result" hidden aria-live="polite">
+      <div class="result-panel" id="factcheckPanel">
+        <div class="result-verdict">
+          <p class="result-kicker" id="factcheckKicker">Verdict</p>
+          <h3 class="result-label" id="factcheckLabel">—</h3>
+          <p class="result-explanation" id="factcheckExplanation"></p>
+        </div>
+        <ul class="citation-list" id="citationList"></ul>
+      </div>
+      <p class="form-error" id="factcheckError" hidden role="alert"></p>
+    </div>
+  </div>
+</section>
+
 {% if metrics %}
 <section class="metrics-section" aria-labelledby="metrics-heading">
   <div class="shell">

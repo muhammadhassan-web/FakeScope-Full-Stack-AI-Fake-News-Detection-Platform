@@ -12,3 +12,7 @@ services:
         generateValue: true
       - key: LOG_LEVEL
         value: INFO
+      - key: TAVILY_API_KEY
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false

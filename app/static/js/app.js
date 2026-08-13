@@ -121,3 +121,118 @@
 
   updateCount();
 })();
+
+(() => {
+  const section = document.getElementById("factcheck");
+  if (!section) return;
+
+  const claimInput = document.getElementById("claimInput");
+  const verifyBtn = document.getElementById("verifyBtn");
+  const btnLabel = verifyBtn.querySelector(".btn-label");
+  const btnSpinner = verifyBtn.querySelector(".btn-spinner");
+  const result = document.getElementById("factcheckResult");
+  const panel = document.getElementById("factcheckPanel");
+  const kicker = document.getElementById("factcheckKicker");
+  const label = document.getElementById("factcheckLabel");
+  const explanation = document.getElementById("factcheckExplanation");
+  const citationList = document.getElementById("citationList");
+  const formError = document.getElementById("factcheckError");
+
+  const minLength = Number(section.dataset.minLength || 20);
+  const maxLength = Number(section.dataset.maxLength || 10000);
+  const isLive = section.dataset.live === "true";
+
+  const VERDICT_META = {
+    SUPPORTED: { cls: "is-real", text: "Supported by sources" },
+    CONTRADICTED: { cls: "is-fake", text: "Contradicted by sources" },
+    UNVERIFIED: { cls: "is-unverified", text: "Unverified" },
+  };
+
+  function setLoading(on) {
+    verifyBtn.disabled = on;
+    btnSpinner.hidden = !on;
+    btnLabel.textContent = on ? "Checking live sources…" : "Check against live sources";
+  }
+
+  function showError(message) {
+    result.hidden = false;
+    panel.hidden = true;
+    formError.hidden = false;
+    formError.textContent = message;
+  }
+
+  function renderCitations(sources) {
+    citationList.innerHTML = "";
+    if (!sources || !sources.length) {
+      const li = document.createElement("li");
+      li.className = "citation citation-empty";
+      li.textContent = "No sources returned.";
+      citationList.appendChild(li);
+      return;
+    }
+    sources.forEach((s) => {
+      const li = document.createElement("li");
+      li.className = "citation" + (s.cited ? " is-cited" : "");
+      const a = document.createElement("a");
+      a.href = s.url;
+      a.target = "_blank";
+      a.rel = "noopener noreferrer";
+      a.textContent = `[${s.index}] ${s.title}`;
+      li.appendChild(a);
+      citationList.appendChild(li);
+    });
+  }
+
+  function renderResult(data) {
+    const meta = VERDICT_META[data.verdict] || VERDICT_META.UNVERIFIED;
+    result.hidden = false;
+    formError.hidden = true;
+    panel.hidden = false;
+    panel.classList.remove("is-fake", "is-real", "is-unverified");
+    panel.classList.add(meta.cls);
+
+    kicker.textContent = `${data.confidence}% confidence`;
+    label.textContent = meta.text;
+    explanation.textContent = data.explanation || "";
+    renderCitations(data.sources);
+
+    result.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }
+
+  async function verify() {
+    if (!isLive) return;
+    const text = claimInput.value.trim();
+    if (text.length < minLength) {
+      showError(`Please enter at least ${minLength} characters.`);
+      claimInput.focus();
+      return;
+    }
+    if (text.length > maxLength) {
+      showError(`Text exceeds the ${maxLength.toLocaleString()}-character limit.`);
+      return;
+    }
+
+    setLoading(true);
+    formError.hidden = true;
+
+    try {
+      const res = await fetch("/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify({ text }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        showError(data.error || `Request failed (${res.status})`);
+        return;
+      }
+      renderResult(data);
+    } catch (err) {
+      showError(err.message || "Network request failed.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  verifyBtn.addEventListener("click", verify);
+})();

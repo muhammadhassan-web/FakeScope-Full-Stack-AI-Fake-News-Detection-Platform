@@ -334,13 +334,19 @@ a {
 }
 
 .analyze-section,
+.factcheck-section,
 .metrics-section,
 .content-section {
   padding: clamp(3.5rem, 8vw, 5.5rem) 0;
 }
 
-.analyze-section {
+.analyze-section,
+.factcheck-section {
   scroll-margin-top: calc(var(--header-h) + 1rem);
+}
+
+.factcheck-section {
+  padding-top: 0;
 }
 
 /* Analyzer interaction surface */
@@ -475,6 +481,58 @@ textarea:focus {
 
 .result-panel.is-real {
   border-left: 4px solid var(--real);
+}
+
+.result-panel.is-unverified {
+  border-left: 4px solid var(--muted);
+}
+
+.result-panel.is-unverified .result-label {
+  color: var(--ink-soft);
+}
+
+.factcheck-offline-note {
+  display: inline-block;
+  margin-top: 0.35rem;
+  color: var(--fake);
+  font-weight: 600;
+  font-size: 0.88rem;
+}
+
+.citation-list {
+  list-style: none;
+  margin: 1.25rem 0 0;
+  padding: 0.9rem 0 0;
+  border-top: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.citation {
+  font-size: 0.92rem;
+}
+
+.citation a {
+  color: var(--ink-soft);
+  text-decoration: none;
+  border-bottom: 1px dashed var(--line);
+}
+
+.citation a:hover {
+  color: var(--teal);
+  border-bottom-color: var(--teal);
+}
+
+.citation.is-cited a {
+  color: var(--teal);
+  font-weight: 700;
+  border-bottom-style: solid;
+  border-bottom-color: var(--teal);
+}
+
+.citation-empty {
+  color: var(--muted);
 }
 
 .result-kicker {
