@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any
@@ -94,19 +95,41 @@ class FactCheckResult:
         }
 
 
-def _search_web(query: str, api_key: str, max_results: int) -> list[dict[str, Any]]:
+# Time-relative phrasing → how many days back Tavily should search. Ordered
+# tightest-first so "today" wins over a looser match in the same claim.
+_RECENCY_PATTERNS: list[tuple[re.Pattern, int]] = [
+    (re.compile(r"\btoday\b|\btonight\b|\byesterday\b|\bright now\b|\bcurrently\b|\bas of now\b|\bbreaking\b", re.I), 3),
+    (re.compile(r"\bthis week\b|\bpast week\b|\blast few days\b|\brecent days\b", re.I), 8),
+    (re.compile(r"\bthis month\b|\bpast month\b|\brecently\b", re.I), 32),
+]
+
+
+def _recency_window(claim: str) -> int | None:
+    """Days-back to constrain search to, if the claim is time-relative. None = unconstrained."""
+    for pattern, days in _RECENCY_PATTERNS:
+        if pattern.search(claim):
+            return days
+    return None
+
+
+def _search_web(query: str, api_key: str, max_results: int, days: int | None) -> list[dict[str, Any]]:
+    payload = {
+        "api_key": api_key,
+        "query": query,
+        "search_depth": "basic",
+        "max_results": max_results,
+        "include_answer": False,
+    }
+    if days is not None:
+        # Tavily only honors `days` when topic="news" — this is also what
+        # structurally excludes stale results for "today"/"this week"-style
+        # claims, rather than relying solely on the LLM to notice a date
+        # mismatch in the prompt.
+        payload["topic"] = "news"
+        payload["days"] = days
+
     try:
-        resp = requests.post(
-            TAVILY_URL,
-            json={
-                "api_key": api_key,
-                "query": query,
-                "search_depth": "basic",
-                "max_results": max_results,
-                "include_answer": False,
-            },
-            timeout=SEARCH_TIMEOUT,
-        )
+        resp = requests.post(TAVILY_URL, json=payload, timeout=SEARCH_TIMEOUT)
         resp.raise_for_status()
     except requests.RequestException as exc:
         raise FactCheckServiceError(f"Web search failed: {exc}") from exc
@@ -148,7 +171,7 @@ def _ask_llm(
                     {"role": "system", "content": SYSTEM_PROMPT},
                     {"role": "user", "content": user_prompt},
                 ],
-                "temperature": 0.2,
+                "temperature": 0.0,
                 "response_format": {"type": "json_object"},
             },
             timeout=LLM_TIMEOUT,
@@ -184,14 +207,20 @@ def verify_claim(
     now = datetime.now(timezone.utc)
     today_str = now.strftime("%Y-%m-%d (%A)")
 
-    raw_results = _search_web(claim, tavily_api_key, max_sources)
+    days = _recency_window(claim)
+    raw_results = _search_web(claim, tavily_api_key, max_sources, days)
 
     if not raw_results:
+        explanation = (
+            "No sources from the relevant time window were found for this claim, so it can't be verified right now."
+            if days is not None
+            else "No current web sources were found for this claim, so it can't be verified right now."
+        )
         return FactCheckResult(
             claim=claim,
             verdict="UNVERIFIED",
             confidence=0.0,
-            explanation="No current web sources were found for this claim, so it can't be verified right now.",
+            explanation=explanation,
             sources=[],
             checked_at=now.isoformat(),
         )
