@@ -770,6 +770,14 @@ textarea:focus {
   background: var(--teal-soft);
 }
 
+.model-card-note {
+  margin: 1.25rem 0 0;
+  max-width: 48rem;
+  font-size: 0.92rem;
+  line-height: 1.6;
+  color: var(--muted);
+}
+
 .pill {
   display: inline-block;
   margin-left: 0.35rem;

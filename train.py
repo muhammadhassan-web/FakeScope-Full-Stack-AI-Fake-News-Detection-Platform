@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 import seaborn as sns
 import joblib
-from sklearn.model_selection import train_test_split, cross_val_score
+from sklearn.model_selection import train_test_split, cross_val_score, StratifiedKFold
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.linear_model import LogisticRegression
 from sklearn.naive_bayes import MultinomialNB
@@ -97,6 +97,12 @@ def train_models(X_train, X_test, y_train, y_test):
                                                       n_jobs=-1, random_state=42),
     }
 
+    # 5-fold CV on the training split alone (test set stays untouched) — a
+    # single train/test split can overstate confidence on datasets like this
+    # one, where REAL/FAKE sources are stylistically very separable. CV
+    # variance across folds is the more honest number to report.
+    cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+
     results = {}
     for name, model in models.items():
         print(f"\n  Training {name}…", end=" ", flush=True)
@@ -112,13 +118,21 @@ def train_models(X_train, X_test, y_train, y_test):
         f1   = f1_score(y_test, preds, zero_division=0)
         cm   = confusion_matrix(y_test, preds)
 
+        # n_jobs=1 here: Random Forest already parallelizes internally via its
+        # own n_jobs=-1, and nesting joblib process pools crashes on Windows.
+        cv_scores  = cross_val_score(model, X_train, y_train, cv=cv, scoring="f1", n_jobs=1)
+        cv_f1_mean = float(cv_scores.mean())
+        cv_f1_std  = float(cv_scores.std())
+
         results[name] = dict(model=model, acc=acc, prec=prec, rec=rec,
-                              f1=f1, cm=cm, preds=preds, time=elapsed)
+                              f1=f1, cm=cm, preds=preds, time=elapsed,
+                              cv_f1_mean=cv_f1_mean, cv_f1_std=cv_f1_std)
         print(f"done ({elapsed:.1f}s)")
-        print(f"    Accuracy  : {acc:.4f}")
-        print(f"    Precision : {prec:.4f}")
-        print(f"    Recall    : {rec:.4f}")
-        print(f"    F1-Score  : {f1:.4f}")
+        print(f"    Accuracy       : {acc:.4f}")
+        print(f"    Precision      : {prec:.4f}")
+        print(f"    Recall         : {rec:.4f}")
+        print(f"    F1-Score       : {f1:.4f}")
+        print(f"    CV F1 (5-fold) : {cv_f1_mean:.4f} ± {cv_f1_std:.4f}")
         print(classification_report(y_test, preds,
               target_names=["REAL","FAKE"], digits=4))
 

@@ -59,7 +59,8 @@
             <th>Accuracy</th>
             <th>Precision</th>
             <th>Recall</th>
-            <th>F1</th>
+            <th>F1 (held-out)</th>
+            <th>F1 (5-fold CV)</th>
           </tr>
         </thead>
         <tbody>
@@ -70,11 +71,21 @@
             <td>{{ "%.1f"|format(m.prec * 100) }}%</td>
             <td>{{ "%.1f"|format(m.rec * 100) }}%</td>
             <td>{{ "%.3f"|format(m.f1) }}</td>
+            <td>{% if m.cv_f1_mean is defined %}{{ "%.3f"|format(m.cv_f1_mean) }} ± {{ "%.3f"|format(m.cv_f1_std) }}{% else %}—{% endif %}</td>
           </tr>
           {% endfor %}
         </tbody>
       </table>
     </div>
+    <p class="model-card-note">
+      Scores this high are a known property of benchmark fake/real news corpora, not a claim of solved fact-checking:
+      real and fabricated articles in datasets like this one differ sharply in writing style and sourcing, so a
+      bag-of-words classifier separates them almost perfectly without ever reasoning about truth. The 5-fold CV
+      column reports variance across folds of the training split (test set held out throughout) as a more honest
+      stability check than a single split alone. This is exactly why <strong>Analyze</strong> above is paired with
+      an independent <strong>live fact-check</strong> pipeline for claims that need real, current-source
+      verification rather than stylistic pattern-matching.
+    </p>
   </div>
 </section>
 {% endif %}
